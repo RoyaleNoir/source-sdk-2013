@@ -1579,7 +1579,7 @@ struct ScriptHook_t
 	{
 		extern IScriptVM *g_pScriptVM;
 
-		Assert( ARRAYSIZE(pArgs) == m_desc.m_Parameters.Count() );
+		// Assert( ARRAYSIZE(pArgs) == m_desc.m_Parameters.Count() );
 
 		// Make sure we have a function in this scope
 		if (!m_hFunc && !CanRunInScope(hScope))

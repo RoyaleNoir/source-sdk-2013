@@ -13,6 +13,7 @@
 *.ilk
 *.lastbuildstate
 vc100.pdb
+vc120.pdb
 ipch
 *.sdf
 *.opensdf
@@ -49,6 +50,15 @@ client.dylib
 client.dylib.dSYM/
 server.dylib
 server.dylib.dSYM/
+
+game_shader_dx9.dll
+game_shader_dx9.lib
+game_shader_dx9.pdb
+
+sp/src/lib/public/mathlib.lib
+sp/src/lib/public/raytrace.lib
+sp/src/lib/public/tier1.lib
+sp/src/lib/public/vgui_controls.lib
 
 # mapbase content
 sp/game/mapbase_episodic/
@@ -98,3 +108,7 @@ sp/src/vgui2/*.pdb
 
 # Build support files
 sp/src/devtools/gcc9+support.o
+sp/src/lib/public/vgui_controls.lib
+sp/src/lib/public/tier1.lib
+sp/src/lib/public/raytrace.lib
+sp/src/lib/public/mathlib.lib
