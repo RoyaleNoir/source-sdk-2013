@@ -1,0 +1,8 @@
+"SDK_LightmappedGeneric"
+{
+	"$basetexture" "rubber/blackrubber_Base_Color"
+	"$bumpmap" "rubber/rubber_normal"
+	"$envmap" "env_cubemap"
+	"$normalmapalphaenvmapmask" "1"
+	"$surfaceprop" "concrete"
+}

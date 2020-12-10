@@ -1,0 +1,6 @@
+pfm 1
+pfmscale 1
+nonice 1
+nocompress 1
+clamps 1
+clampt 1

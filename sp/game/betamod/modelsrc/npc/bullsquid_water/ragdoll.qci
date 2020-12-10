@@ -1,0 +1,10 @@
+
+$collisionjoints ragdoll {
+
+	$mass 94.0
+	$inertia 10.00
+	$damping 0.01
+	$rotdamping 1.00
+	$rootbone "bullsquid.pelvis"
+}
+$sequence ragdoll "ragdoll_pose" FPS 30 activity ACT_DIERAGDOLL 1

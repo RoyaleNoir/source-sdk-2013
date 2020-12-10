@@ -10,4 +10,12 @@ $Include "$SRCDIR\materialsystem\stdshaders\game_shader_dx9_base.vpc"
 
 $Project "Shaders (Beta Mod)"
 {
+    $Folder "Source Files"
+    {
+        $File "ssao_downsample.cpp"
+        $File "ssao_pass.cpp"
+
+        $File "ldr_to_hdr.cpp"
+        $File "tonemap.cpp"
+    }
 }

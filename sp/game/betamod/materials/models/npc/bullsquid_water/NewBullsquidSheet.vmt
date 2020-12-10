@@ -1,0 +1,12 @@
+"SDK_VertexLitGeneric"
+{
+	"$basetexture" "models/npc/bullsquid_water/NewBullsquidSheet"
+	"$bumpmap" "models/npc/bullsquid_water/NewBullsquidSheet_normal"
+	
+	$phong 1
+	$phongexponent			16
+	$phongboost				8.0
+	$phongfresnelranges		"[0 0.5 1]"
+	"$alphatest"	"1"
+	"$allowalphatocoverage"	"1"
+}

@@ -44,3 +44,11 @@ SDK_teeth_flashlight_vs20.fxc
 
 SDK_decalmodulate_ps2x.fxc
 SDK_decalmodulate_vs20.fxc
+
+ssao_downsample_ps30.fxc
+ssao_downsample_vs30.fxc
+
+ssao_pass_ps30.fxc
+ssao_pass_vs30.fxc
+
+tonemap_ps2x.fxc

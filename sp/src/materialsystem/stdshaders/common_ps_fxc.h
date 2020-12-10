@@ -313,9 +313,10 @@ float3 SRGBOutput( const float3 vShaderColor )
 {	
 	//On ps2b capable hardware we always have the linear->gamma conversion table texture in sampler s15.
 	float3 result;
-	result.r = tex1D( GammaTableSampler, vShaderColor.r ).r;
+	/*result.r = tex1D( GammaTableSampler, vShaderColor.r ).r;
 	result.g = tex1D( GammaTableSampler, vShaderColor.g ).r;
-	result.b = tex1D( GammaTableSampler, vShaderColor.b ).r;
+	result.b = tex1D( GammaTableSampler, vShaderColor.b ).r;*/
+	result.rgb = pow(vShaderColor.rgb, float3(1, 1, 1) / 2.2);
 	return result;	
 }
 

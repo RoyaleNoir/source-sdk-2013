@@ -1,0 +1,42 @@
+#include "common_ps_fxc.h"
+
+sampler TexSampler	: register( s0 );
+
+struct PS_INPUT
+{
+	HALF2 baseTexCoord				: TEXCOORD0;		// Base texture coordinate
+};
+
+#if !(defined(SHADER_MODEL_PS_1_1) || defined(SHADER_MODEL_PS_1_4) || defined(SHADER_MODEL_PS_2_0))
+float luminance(float3 v)
+{
+    return dot(v, float3(0.2126f, 0.7152f, 0.0722f));
+}
+#endif
+
+float4 main( PS_INPUT i ) : COLOR
+{
+	float4 result = tex2D( TexSampler, i.baseTexCoord );
+
+	result.rgb =result.rgb / LINEAR_LIGHT_SCALE;
+
+	float betterScale = LINEAR_LIGHT_SCALE * 0.9;		// Not as blown out
+
+	// LINEAR_LIGHT_SCALE
+
+	// TODO: Mask out UNLITGENERIC?
+	#if !(defined(SHADER_MODEL_PS_1_1) || defined(SHADER_MODEL_PS_1_4) || defined(SHADER_MODEL_PS_2_0))
+	float lum_in = luminance(result.rgb);
+	float lum_out = (lum_in * (1 + lum_in * betterScale * betterScale)) / (1 + lum_in);
+
+	result.rgb *= lum_out / lum_in;
+
+	#else
+	result.rgb = (result.rgb * (1 + result.rgb * betterScale * betterScale)) / (1 + result.rgb);
+	#endif
+
+	result.rgb = pow(result.rgb, float3(1, 1, 1) / 2.2);
+
+	result.a = 1.0f;
+	return result;
+}

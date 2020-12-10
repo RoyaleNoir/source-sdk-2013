@@ -95,3 +95,8 @@ SDK_ShatteredGlass_ps2x.fxc
 SDK_ShatteredGlass_vs20.fxc
 SDK_windowimposter_ps2x.fxc
 SDK_windowimposter_vs20.fxc
+
+// testhdr_ps2x.fxc
+
+ldr_to_hdr_ps2x.fxc
+tonemap_ps2x.fxc

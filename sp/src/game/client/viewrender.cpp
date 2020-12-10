@@ -184,6 +184,8 @@ extern ConVar localplayer_visionflags;
 static ConVar r_nearz_skybox( "r_nearz_skybox", "2.0", FCVAR_CHEAT );
 #endif
 
+static ConVar r_newtonemapping("r_newtonemapping", "1");
+
 //-----------------------------------------------------------------------------
 // Globals
 //-----------------------------------------------------------------------------
@@ -834,6 +836,13 @@ CLIENTEFFECT_REGISTER_BEGIN( PrecachePostProcessingEffects )
 	CLIENTEFFECT_MATERIAL( "dev/pyro_vignette" )
 	CLIENTEFFECT_MATERIAL( "dev/pyro_post" )
 #endif
+
+	CLIENTEFFECT_MATERIAL("dev/ssao_pass")
+	CLIENTEFFECT_MATERIAL("dev/ssao_down1")
+	CLIENTEFFECT_MATERIAL("dev/ssao_down2")
+
+	CLIENTEFFECT_MATERIAL("dev/expand_hdr")
+	CLIENTEFFECT_MATERIAL("dev/tonemap")
 
 CLIENTEFFECT_REGISTER_END_CONDITIONAL( engine->GetDXSupportLevel() >= 90 )
 
@@ -2035,6 +2044,13 @@ void CViewRender::RenderView( const CViewSetup &view, int nClearFlags, int whatT
 		bool bDrew3dSkybox = false;
 		SkyboxVisibility_t nSkyboxVisible = SKYBOX_NOT_VISIBLE;
 
+		if (view.m_bDoBloomAndToneMapping && r_newtonemapping.GetBool() && !building_cubemaps.GetBool())
+		{
+			pRenderContext.GetFrom(materials);
+			pRenderContext->PushRenderTargetAndViewport(GetFloatLDRTexture());
+			pRenderContext.SafeRelease();
+		}
+
 #ifndef MAPBASE // Moved to respective ViewDrawScenes() for script_intro skybox fix
 		// if the 3d skybox world is drawn, then don't draw the normal skybox
 		CSkyboxView *pSkyView = new CSkyboxView( this );
@@ -2087,6 +2103,41 @@ void CViewRender::RenderView( const CViewSetup &view, int nClearFlags, int whatT
 #endif
 		}
 
+
+		if (view.m_bDoBloomAndToneMapping && r_newtonemapping.GetBool() && !building_cubemaps.GetBool())
+		{
+			// Now actually draw the viewmodel
+#ifdef MAPBASE
+			if (!bDrawnViewmodel)
+#endif
+				DrawViewModels(view, whatToDraw & RENDERVIEW_DRAWVIEWMODEL);
+
+
+			pRenderContext.GetFrom(materials);
+			pRenderContext->PopRenderTargetAndViewport();
+			pRenderContext->PushRenderTargetAndViewport(GetFloatHDRTexture());
+			pRenderContext.SafeRelease();
+			// Undo default tonemapping
+			ExpandHDR();
+
+			pRenderContext.GetFrom(materials);
+			pRenderContext->PopRenderTargetAndViewport();
+			pRenderContext.SafeRelease();
+
+			DoNewTonemap();
+		}
+
+		/*pRenderContext = materials->GetRenderContext();
+		{
+			Rect_t rect;
+			rect.x = view.x;
+			rect.y = view.y;
+			rect.width = view.width;
+			rect.height = view.height;
+			pRenderContext->CopyRenderTargetToTextureEx(GetFloatHDRTexture(), 0, &rect, &rect);
+		}
+		pRenderContext.SafeRelease();*/
+
 		// We can still use the 'current view' stuff set up in ViewDrawScene
 		s_bCanAccessCurrentView = true;
 
@@ -2119,11 +2170,14 @@ void CViewRender::RenderView( const CViewSetup &view, int nClearFlags, int whatT
 
 		GetClientModeNormal()->DoPostScreenSpaceEffects( &view );
 
-		// Now actually draw the viewmodel
+		if (!r_newtonemapping.GetBool() || !view.m_bDoBloomAndToneMapping)
+		{
+			// Now actually draw the viewmodel
 #ifdef MAPBASE
-		if (!bDrawnViewmodel)
+			if (!bDrawnViewmodel)
 #endif
-		DrawViewModels( view, whatToDraw & RENDERVIEW_DRAWVIEWMODEL );
+				DrawViewModels(view, whatToDraw & RENDERVIEW_DRAWVIEWMODEL);
+		}
 
 		DrawUnderwaterOverlay();
 
@@ -2225,6 +2279,8 @@ void CViewRender::RenderView( const CViewSetup &view, int nClearFlags, int whatT
 		}
 
 	}
+
+	// DoSSAO(view);
 
 	if ( mat_viewportupscale.GetBool() && mat_viewportscale.GetFloat() < 1.0f ) 
 	{
@@ -4526,8 +4582,11 @@ void CRendering3dView::DrawOpaqueRenderables( ERenderDepthMode DepthMode )
 					arrRenderEntsNpcsFirst[ numNpcs ++ ] = *itEntity;
 					arrBoneSetupNpcsLast[ numOpaqueEnts - numNpcs ] = pba;
 					
-					itEntity->m_pRenderable = NULL;		// We will render NPCs separately
-					itEntity->m_RenderHandle = NULL;
+					if (CurrentViewID() != VIEW_SSAO)
+					{
+						itEntity->m_pRenderable = NULL;		// We will render NPCs separately
+						itEntity->m_RenderHandle = NULL;
+					}
 					
 					continue;
 				}
@@ -5968,6 +6027,11 @@ void CBaseWorldView::DrawSetup( float waterHeight, int nSetupFlags, float waterZ
 	}
 #endif
 
+	if (savedViewID == VIEW_MAIN)
+	{
+		SSAO_DepthPass();
+	}
+
 	g_CurrentViewID = savedViewID;
 }
 
@@ -6053,6 +6117,11 @@ void CBaseWorldView::DrawExecute( float waterHeight, view_id_t viewID, float wat
 			DrawDepthOfField();
 		}
 #endif
+		
+		//Do this before translucents
+		/*if (CurrentViewID() == VIEW_MAIN)
+			DoSSAO(*this);*/
+
 		DrawTranslucentRenderables( false, false );
 		DrawNoZBufferTranslucentRenderables();
 	}
@@ -6068,6 +6137,11 @@ void CBaseWorldView::DrawExecute( float waterHeight, view_id_t viewID, float wat
 			DrawDepthOfField();
 		}
 #endif
+
+		//Do this before translucents
+		/*if (CurrentViewID() == VIEW_MAIN)
+			DoSSAO(*this);*/
+
 		// Draw translucent world brushes only, no entities
 		DrawTranslucentWorldInLeaves( false );
 	}
@@ -6105,7 +6179,7 @@ void CBaseWorldView::SSAO_DepthPass()
 	int savedViewID = g_CurrentViewID;
 	g_CurrentViewID = VIEW_SSAO;
 
-	ITexture *pSSAO = materials->FindTexture( "_rt_ResolvedFullFrameDepth", TEXTURE_GROUP_RENDER_TARGET );
+	ITexture *pSSAO = materials->FindTexture( "_rt_SSAODepth", TEXTURE_GROUP_RENDER_TARGET );
 
 	CMatRenderContextPtr pRenderContext( materials );
 

@@ -1,0 +1,4 @@
+"ldr_to_hdr"
+{
+	"$basetexture"	"_rt_LDRBuffer"
+}

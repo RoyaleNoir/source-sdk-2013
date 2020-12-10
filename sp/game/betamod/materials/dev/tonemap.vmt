@@ -1,0 +1,4 @@
+"tonemap"
+{
+	"$basetexture"	"_rt_HDRBuffer"
+}

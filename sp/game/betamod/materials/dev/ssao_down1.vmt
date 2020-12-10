@@ -1,0 +1,4 @@
+"ssao_downsample"
+{
+	"$basetexture" "_rt_SSAODepth"
+}

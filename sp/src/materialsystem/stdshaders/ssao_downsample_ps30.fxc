@@ -1,0 +1,14 @@
+#include "common_ps_fxc.h"
+
+sampler			DepthBufferSampler				: register( s0 );
+
+struct PS_INPUT
+{
+	HALF2 vTexCoord			:	TEXCOORD0;
+};
+
+float4 main( PS_INPUT i ) : COLOR
+{
+    float oldDepth = tex2D(DepthBufferSampler, i.vTexCoord).r;
+    return float4(oldDepth, 0.0, 0.0, 1.0);
+}

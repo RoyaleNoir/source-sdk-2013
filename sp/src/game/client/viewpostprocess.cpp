@@ -24,6 +24,7 @@
 #include "tier0/vprof.h"
 
 #include "proxyentity.h"
+#include "viewpostprocess.h"
 
 //-----------------------------------------------------------------------------
 // Globals
@@ -85,7 +86,7 @@ ConVar mat_exposure_center_region_y_flashlight( "mat_exposure_center_region_y_fl
 
 ConVar mat_tonemap_algorithm( "mat_tonemap_algorithm", "1", FCVAR_CHEAT, "0 = Original Algorithm 1 = New Algorithm" );
 ConVar mat_tonemap_percent_target( "mat_tonemap_percent_target", "60.0", FCVAR_CHEAT );
-ConVar mat_tonemap_percent_bright_pixels( "mat_tonemap_percent_bright_pixels", "2.0", FCVAR_CHEAT );
+ConVar mat_tonemap_percent_bright_pixels( "mat_tonemap_percent_bright_pixels", "0.5", FCVAR_CHEAT );
 ConVar mat_tonemap_min_avglum( "mat_tonemap_min_avglum", "3.0", FCVAR_CHEAT );
 ConVar mat_fullbright( "mat_fullbright", "0", FCVAR_CHEAT );
 
@@ -3028,4 +3029,114 @@ void DoImageSpaceMotionBlur( const CViewSetup &view, int x, int y, int w, int h 
 			}
 		}
 	}
+}
+
+void DoSSAO(const CViewSetup& viewSet)
+{
+	CMatRenderContextPtr pRenderContext(materials);
+
+	pRenderContext->OverrideDepthEnable(true, false);
+
+	ITexture* pSrc = materials->FindTexture("_rt_FullFrameFB", TEXTURE_GROUP_RENDER_TARGET);
+	int nSrcWidth = pSrc->GetActualWidth();
+	int nSrcHeight = pSrc->GetActualHeight();
+
+	int nViewportWidth = 0;
+	int nViewportHeight = 0;
+	int nDummy = 0;
+	pRenderContext->GetViewport(nDummy, nDummy, nViewportWidth, nViewportHeight);
+
+	IMaterial* pSSAODown1 = materials->FindMaterial("dev/ssao_down1", TEXTURE_GROUP_CLIENT_EFFECTS, true);
+	IMaterial* pSSAODown2 = materials->FindMaterial("dev/ssao_down2", TEXTURE_GROUP_CLIENT_EFFECTS, true);
+	IMaterial* pSSAOPass1 = materials->FindMaterial("dev/ssao_pass", TEXTURE_GROUP_CLIENT_EFFECTS, true);
+
+	ITexture* pSSAO_LOD1 = materials->FindTexture("_rt_SSAODepth1", TEXTURE_GROUP_RENDER_TARGET);
+	ITexture* pSSAO_LOD2 = materials->FindTexture("_rt_SSAODepth2", TEXTURE_GROUP_RENDER_TARGET);
+
+	// Mip level 1
+
+	pRenderContext->PushRenderTargetAndViewport(pSSAO_LOD1, 0, 0, nViewportWidth / 2, nViewportHeight / 2);
+	pRenderContext->DrawScreenSpaceRectangle(
+		pSSAODown1,
+		0, 0, nViewportWidth / 2, nViewportHeight / 2,
+		0, 0, nSrcWidth - 1, nSrcHeight - 1,
+		nSrcWidth, nSrcHeight, GetClientWorldEntity()->GetClientRenderable());
+	pRenderContext->PopRenderTargetAndViewport();
+
+	// Mip level 2
+
+	pRenderContext->PushRenderTargetAndViewport(pSSAO_LOD2, 0, 0, nViewportWidth / 4, nViewportHeight / 4);
+	pRenderContext->DrawScreenSpaceRectangle(
+		pSSAODown2,
+		0, 0, nViewportWidth / 4, nViewportHeight / 4,
+		0, 0, nSrcWidth - 1, nSrcHeight - 1,
+		nSrcWidth, nSrcHeight, GetClientWorldEntity()->GetClientRenderable());
+	pRenderContext->PopRenderTargetAndViewport();
+
+	if (pSSAOPass1 == NULL)
+		return;
+
+	pRenderContext->DrawScreenSpaceRectangle(
+		pSSAOPass1,
+		0, 0, nViewportWidth, nViewportHeight,
+		0, 0, nSrcWidth - 1, nSrcHeight - 1,
+		nSrcWidth, nSrcHeight, GetClientWorldEntity()->GetClientRenderable());
+
+	pRenderContext->OverrideDepthEnable(false, true);
+}
+
+void ExpandHDR()
+{
+	CMatRenderContextPtr pRenderContext(materials);
+
+	pRenderContext->OverrideDepthEnable(true, false);
+
+	ITexture* pSrc = materials->FindTexture("_rt_FullFrameFB", TEXTURE_GROUP_RENDER_TARGET);
+	int nSrcWidth = pSrc->GetActualWidth();
+	int nSrcHeight = pSrc->GetActualHeight();
+
+	int nViewportWidth = 0;
+	int nViewportHeight = 0;
+	int nDummy = 0;
+	pRenderContext->GetViewport(nDummy, nDummy, nViewportWidth, nViewportHeight);
+
+	IMaterial* pToneMap = materials->FindMaterial("dev/expand_hdr", TEXTURE_GROUP_CLIENT_EFFECTS, true);
+
+	// Mip level 1
+
+	pRenderContext->DrawScreenSpaceRectangle(
+		pToneMap,
+		0, 0, nViewportWidth, nViewportHeight,
+		0, 0, nSrcWidth - 1, nSrcHeight - 1,
+		nSrcWidth, nSrcHeight, GetClientWorldEntity()->GetClientRenderable());
+
+	pRenderContext->OverrideDepthEnable(false, true);
+}
+
+void DoNewTonemap()
+{
+	CMatRenderContextPtr pRenderContext(materials);
+
+	pRenderContext->OverrideDepthEnable(true, false);
+
+	ITexture* pSrc = materials->FindTexture("_rt_FullFrameFB", TEXTURE_GROUP_RENDER_TARGET);
+	int nSrcWidth = pSrc->GetActualWidth();
+	int nSrcHeight = pSrc->GetActualHeight();
+
+	int nViewportWidth = 0;
+	int nViewportHeight = 0;
+	int nDummy = 0;
+	pRenderContext->GetViewport(nDummy, nDummy, nViewportWidth, nViewportHeight);
+
+	IMaterial* pToneMap = materials->FindMaterial("dev/tonemap", TEXTURE_GROUP_CLIENT_EFFECTS, true);
+
+	// Mip level 1
+
+	pRenderContext->DrawScreenSpaceRectangle(
+		pToneMap,
+		0, 0, nViewportWidth, nViewportHeight,
+		0, 0, nSrcWidth - 1, nSrcHeight - 1,
+		nSrcWidth, nSrcHeight, GetClientWorldEntity()->GetClientRenderable());
+
+	pRenderContext->OverrideDepthEnable(false, true);
 }

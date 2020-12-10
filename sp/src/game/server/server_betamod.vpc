@@ -47,6 +47,11 @@ $Project "Server (BetaMod)"
 		$File	"$SRCDIR\game\shared\vehicle_choreo_generic_shared.h"
 		$File	"$SRCDIR\game\shared\weapon_parse_default.cpp"
 
+		$Folder "Betamod"
+		{
+			
+		}
+
 		$Folder	"HL2 DLL"
 		{
 			$File	"$SRCDIR\game\shared\episodic\achievements_ep1.cpp"

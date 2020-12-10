@@ -78,7 +78,7 @@ set SrcDirBase=%~5
 
 REM ** use the -game parameter to tell us where to put the files
 set targetdir=%~3\shaders
-set SDKArgs=-nompi -nop4 -game "%~3"
+set SDKArgs=-nompi -nop4 -threads 8 -game "%~3"
 
 if not exist "%~3\gameinfo.txt" goto InvalidGameDirectory
 goto build_shaders
@@ -194,7 +194,7 @@ REM ****************
 :DoXCopy
 if not "%dynamic_shaders%" == "1" (
 if not exist "%targetdir%" md "%targetdir%"
-if not "%targetdir%"=="%shaderDir%" xcopy %shaderDir%\*.* "%targetdir%" /e /y
+if not "%targetdir%"=="%shaderDir%" xcopy %shaderDir%\*.* "%targetdir%" /e /y > nul
 )
 goto end
 

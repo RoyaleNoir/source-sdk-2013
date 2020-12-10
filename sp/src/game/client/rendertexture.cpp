@@ -243,6 +243,30 @@ ITexture *GetTeenyTexture( int which )
 	return s_TeenyTextures[which];
 }
 
+static CTextureReference s_pFloatLDRTexture;
+ITexture* GetFloatLDRTexture(void)
+{
+	if (!s_pFloatLDRTexture)
+	{
+		s_pFloatLDRTexture.Init(materials->FindTexture("_rt_LDRBuffer", TEXTURE_GROUP_RENDER_TARGET));
+		Assert(!IsErrorTexture(s_pFloatLDRTexture));
+		AddReleaseFunc();
+	}
+	return s_pFloatLDRTexture;
+}
+
+static CTextureReference s_pFloatHDRTexture;
+ITexture* GetFloatHDRTexture(void)
+{
+	if (!s_pFloatHDRTexture)
+	{
+		s_pFloatHDRTexture.Init(materials->FindTexture("_rt_HDRBuffer", TEXTURE_GROUP_RENDER_TARGET));
+		Assert(!IsErrorTexture(s_pFloatHDRTexture));
+		AddReleaseFunc();
+	}
+	return s_pFloatHDRTexture;
+}
+
 void ReleaseRenderTargets( void )
 {
 	s_pPowerOfTwoFrameBufferTexture.Shutdown();
@@ -252,6 +276,8 @@ void ReleaseRenderTargets( void )
 	s_pQuarterSizedFB0.Shutdown();
 	s_pQuarterSizedFB1.Shutdown();
 	s_pFullFrameDepthTexture.Shutdown();
+
+	s_pFloatHDRTexture.Shutdown();
 
 	for (int i=0; i<MAX_FB_TEXTURES; ++i)
 		s_pFullFrameFrameBufferTexture[i].Shutdown();

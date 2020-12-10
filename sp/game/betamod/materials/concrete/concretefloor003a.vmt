@@ -1,0 +1,11 @@
+SDK_LightmappedGeneric
+{
+	"$basetexture" "Concrete/concretefloor003a"
+	"$bumpmap" "concrete/concretefloor003a_normal"
+	"$normalmapalphaenvmapmask"	"1"
+	// "$envmaptint"	"[0.75 0.75 0.75]"
+	"$fresnelreflection"	"1"
+	"$surfaceprop" "concrete"
+	"$envmap" "env_cubemap"
+	"%keywords" "c17downtown"
+}

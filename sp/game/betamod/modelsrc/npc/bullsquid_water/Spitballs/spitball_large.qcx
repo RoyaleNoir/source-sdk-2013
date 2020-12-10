@@ -1,0 +1,17 @@
+/*
+----------------------------
+spitball_large
+
+----------------------------
+*/
+
+$modelname spitball_large.mdl
+
+
+$scale 1.0
+$body "Body" "spitball_large.smd"
+$staticprop
+
+$sequence Idle 	"spitball_idlelarge" loop fps 30		
+
+

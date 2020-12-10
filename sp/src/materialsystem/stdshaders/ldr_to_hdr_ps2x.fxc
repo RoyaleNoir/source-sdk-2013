@@ -1,0 +1,18 @@
+#include "common_ps_fxc.h"
+
+sampler TexSampler	: register( s0 );
+
+struct PS_INPUT
+{
+	HALF2 baseTexCoord				: TEXCOORD0;		// Base texture coordinate
+};
+
+float4 main( PS_INPUT i ) : COLOR
+{
+	float4 result = tex2D( TexSampler, i.baseTexCoord );
+
+	result.rgb =result.rgb / LINEAR_LIGHT_SCALE;
+
+	result.a = 1.0f;
+	return result;
+}

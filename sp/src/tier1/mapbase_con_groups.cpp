@@ -147,7 +147,7 @@ CON_COMMAND( con_group_toggle, "Toggles a console group." )
 void CGMsg( int level, const char *pszGroup, const tchar* pMsg, ... )
 {
 	// Return early if we're not at this level
-	if (!IsSpewActive("console", level))
+	if (!IsSpewActive("developer", level))
 		return;
 
 	char string[ 2048 ];

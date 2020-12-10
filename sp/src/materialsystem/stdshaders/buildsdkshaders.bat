@@ -26,6 +26,8 @@ set BUILD_SHADER=call buildshaders.bat
 set ARG_EXTRA=
 
 %BUILD_SHADER% stdshader_dx9_20b		-game %GAMEDIR% -source %SOURCEDIR%
+rem give shadercompile a chance to close...
+timeout /t 2
 %BUILD_SHADER% stdshader_dx9_30			-game %GAMEDIR% -source %SOURCEDIR% -dx9_30	-force30 
 
 

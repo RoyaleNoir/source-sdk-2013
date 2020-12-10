@@ -26,6 +26,12 @@ $Project "Client (BetaMod)"
 		$File	"c_team_objectiveresource.cpp"
 		$File	"c_team_objectiveresource.h"
 
+		$Folder "Betamod"
+		{
+			$File	"betamod\betamod_rendertargets.cpp"
+			$File	"betamod\betamod_rendertargets.h"
+		}
+
 		$Folder	"HL2 DLL"
 		{
 			$File	"$SRCDIR\game\shared\hl2\basehlcombatweapon_shared.cpp"

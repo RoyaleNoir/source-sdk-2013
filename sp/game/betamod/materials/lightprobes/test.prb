@@ -1,0 +1,60 @@
+<!-- dmx encoding keyvalues2 1 format dmx 1 -->
+"DmeElement"
+{
+	"id" "elementid" "0126f860-93b6-4fa8-a8da-c77a8f0280cd"
+	"ambientCube" "vector3_array" 
+	[
+		"0.0046098744 0.005568685 0.0054727863",
+		"0.0072002588 0.0073611545 0.0055103949",
+		"0.0046574078 0.0054759532 0.0049278",
+		"0.0065022046 0.0069624661 0.0064608399",
+		"0.004639748 0.0074316901 0.0081337159",
+		"0.006036974 0.0052396911 0.0033867469"
+	]
+	"cubemap" "string" "lightprobes/test"
+	"cubemapHdr" "string" "lightprobes/test_hdr"
+	"localLights" "element_array" 
+	[
+		"DmeElement"
+		{
+			"id" "elementid" "443dbe37-9528-44bb-95a6-24040f23bd74"
+			"attenuation" "vector3" "0 0 1"
+			"color" "vector3" "2862.4272460938 3921.5688476563 3921.5688476563"
+			"direction" "vector3" "0.1822354943 0 -0.9832549095"
+			"exponent" "float" "1"
+			"maxDistance" "float" "645.0357055664"
+			"name" "string" "Spot"
+			"origin" "vector3" "-740 -640 256"
+			"phi" "float" "2.792526722"
+			"theta" "float" "1.5707963705"
+		},
+		"DmeElement"
+		{
+			"id" "elementid" "1da67978-d816-43f7-9433-9b339013e584"
+			"attenuation" "vector3" "0 0 1"
+			"color" "vector3" "2862.4272460938 3921.5688476563 3921.5688476563"
+			"direction" "vector3" "0.1822354943 0 -0.9832549095"
+			"exponent" "float" "1"
+			"maxDistance" "float" "645.0357055664"
+			"name" "string" "Spot"
+			"origin" "vector3" "-740 -384 256"
+			"phi" "float" "2.792526722"
+			"theta" "float" "1.5707963705"
+		},
+		"DmeElement"
+		{
+			"id" "elementid" "032c71e2-1bb9-4eb0-b375-e33f59ef68aa"
+			"attenuation" "vector3" "0 0 1"
+			"color" "vector3" "7843.1376953125 7508.7817382813 5499.369140625"
+			"direction" "vector3" "-0.000000038 -0 -1"
+			"exponent" "float" "10"
+			"maxDistance" "float" "900.7872314453"
+			"name" "string" "Spot"
+			"origin" "vector3" "-704 -78 432"
+			"phi" "float" "2.0943951607"
+			"theta" "float" "1.5707963705"
+		}
+	]
+	"name" "string" "lightprobe"
+}
+

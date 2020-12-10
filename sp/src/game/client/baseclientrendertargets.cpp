@@ -16,7 +16,7 @@ ITexture* CBaseClientRenderTargets::CreateWaterReflectionTexture( IMaterialSyste
 	return pMaterialSystem->CreateNamedRenderTargetTextureEx2(
 		"_rt_WaterReflection",
 		iSize, iSize, RT_SIZE_PICMIP,
-		pMaterialSystem->GetBackBufferFormat(), 
+		IMAGE_FORMAT_RGBA16161616F, 
 		MATERIAL_RT_DEPTH_SHARED, 
 		TEXTUREFLAGS_CLAMPS | TEXTUREFLAGS_CLAMPT,
 		CREATERENDERTARGETFLAGS_HDR );
@@ -28,7 +28,7 @@ ITexture* CBaseClientRenderTargets::CreateWaterRefractionTexture( IMaterialSyste
 		"_rt_WaterRefraction",
 		iSize, iSize, RT_SIZE_PICMIP,
 		// This is different than reflection because it has to have alpha for fog factor.
-		IMAGE_FORMAT_RGBA8888, 
+		IMAGE_FORMAT_RGBA16161616F,
 		MATERIAL_RT_DEPTH_SHARED, 
 		TEXTUREFLAGS_CLAMPS | TEXTUREFLAGS_CLAMPT,
 		CREATERENDERTARGETFLAGS_HDR );

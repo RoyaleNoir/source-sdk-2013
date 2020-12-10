@@ -1,0 +1,15 @@
+"ssao_pass"
+{
+	"$basetexture" "_rt_SSAODepth"
+	"$basetexture1" "_rt_SSAODepth1"
+	"$basetexture2" "_rt_SSAODepth2"
+	"$noise_texture" "dev/bluenoise"
+	
+	Proxies // proxies are listed inside this block
+	{
+		CurrentTime // a proxy which produces a sine wave
+		{
+			resultVar	$time // The shader parameter to be manipulated
+		}
+	}
+}
