@@ -1584,6 +1584,60 @@ void CBasePlayer::CalcViewModelView( const Vector& eyeOrigin, const QAngle& eyeA
 	}
 }
 
+#ifdef CLIENT_DLL
+
+extern ConVar cl_bobcycle;
+extern ConVar cl_bob;
+extern ConVar cl_bobup;
+
+static float CalcBob(CBasePlayer* player)
+{
+	static	double	bobtime;
+	static double lastbobtime;
+	static float	bob;
+	float	cycle;
+
+	//NOTENOTE: For now, let this cycle continue when in the air, because it snaps badly without it
+
+	if ((!gpGlobals->frametime) || (player == NULL))
+	{
+		//NOTENOTE: We don't use this return value in our case (need to restructure the calculation function setup!)
+		return 0.0f;// just use old value
+	}
+
+	if (player->GetGroundEntity() == NULL || gpGlobals->curtime == lastbobtime)
+	{
+		lastbobtime = gpGlobals->curtime;
+		return bob;
+	}
+
+	//Find the speed of the player
+	float speed = player->GetLocalVelocity().Length2D();
+
+	bobtime += (gpGlobals->curtime - lastbobtime);
+	lastbobtime = gpGlobals->curtime;
+
+	cycle = bobtime - (int)(bobtime / cl_bobcycle.GetFloat()) * cl_bobcycle.GetFloat();
+	cycle /= cl_bobcycle.GetFloat();
+	if (cycle < cl_bobup.GetFloat())
+		cycle = M_PI * cycle / cl_bobup.GetFloat();
+	else
+		cycle = M_PI + M_PI * (cycle - cl_bobup.GetFloat()) / (1.0 - cl_bobup.GetFloat());
+
+	// bob is proportional to simulated velocity in the xy plane
+	// (don't count Z, or jumping messes it up)
+
+	bob = speed * cl_bob.GetFloat();
+	bob = bob * 0.3 + bob * 0.7 * sin(cycle);
+	if (bob > 4)
+		bob = 4;
+	else if (bob < -7)
+		bob = -7;
+
+	return bob;
+}
+#endif
+
 void CBasePlayer::CalcPlayerView( Vector& eyeOrigin, QAngle& eyeAngles, float& fov )
 {
 #if defined( CLIENT_DLL )
@@ -1626,6 +1680,11 @@ void CBasePlayer::CalcPlayerView( Vector& eyeOrigin, QAngle& eyeAngles, float& f
 #if defined( CLIENT_DLL )
 	if ( !prediction->InPrediction() )
 	{
+		float bob = CalcBob(this);
+		// eyeOrigin[2] += bob;
+
+		VectorAdd(eyeOrigin, Vector(0, 0, bob), eyeOrigin);
+
 		// Shake it up baby!
 		vieweffects->CalcShake();
 		vieweffects->ApplyShake( eyeOrigin, eyeAngles, 1.0 );

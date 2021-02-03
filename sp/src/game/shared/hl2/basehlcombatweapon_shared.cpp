@@ -237,9 +237,9 @@ float	g_verticalBob;
 #define	HL2_BOB_UP		0.5f
 
 
-static ConVar	cl_bobcycle( "cl_bobcycle","0.8" );
-static ConVar	cl_bob( "cl_bob","0.002" );
-static ConVar	cl_bobup( "cl_bobup","0.5" );
+ConVar	cl_bobcycle( "cl_bobcycle","0.8" );
+ConVar	cl_bob( "cl_bob","0.01" );
+ConVar	cl_bobup( "cl_bobup","0.5" );
 
 // Register these cvars if needed for easy tweaking
 static ConVar	v_iyaw_cycle( "v_iyaw_cycle", "2"/*, FCVAR_UNREGISTERED*/ );
@@ -255,6 +255,7 @@ static ConVar	v_ipitch_level( "v_ipitch_level", "0.3"/*, FCVAR_UNREGISTERED*/ );
 //-----------------------------------------------------------------------------
 float CBaseHLCombatWeapon::CalcViewmodelBob( void )
 {
+#ifndef BETAMOD
 	static	float bobtime;
 	static	float lastbobtime;
 	float	cycle;
@@ -320,6 +321,57 @@ float CBaseHLCombatWeapon::CalcViewmodelBob( void )
 	
 	//NOTENOTE: We don't use this return value in our case (need to restructure the calculation function setup!)
 	return 0.0f;
+#else
+	static	double	bobtime;
+	static double lastbobtime;
+	static float	bob;
+	float	cycle;
+
+	CBasePlayer* player = ToBasePlayer(GetOwner());
+	//Assert( player );
+
+	//NOTENOTE: For now, let this cycle continue when in the air, because it snaps badly without it
+
+	if ((!gpGlobals->frametime) || (player == NULL))
+	{
+		//NOTENOTE: We don't use this return value in our case (need to restructure the calculation function setup!)
+		return 0.0f;// just use old value
+	}
+
+	if (player->GetGroundEntity() == NULL || gpGlobals->curtime == lastbobtime)
+	{
+		lastbobtime = gpGlobals->curtime;
+		return bob;
+	}
+
+	//Find the speed of the player
+	float speed = player->GetLocalVelocity().Length2D();
+
+	bobtime += (gpGlobals->curtime - lastbobtime);
+	lastbobtime = gpGlobals->curtime;
+
+	cycle = bobtime - (int)(bobtime / cl_bobcycle.GetFloat()) * cl_bobcycle.GetFloat();
+	cycle /= cl_bobcycle.GetFloat();
+	if (cycle < cl_bobup.GetFloat())
+		cycle = M_PI * cycle / cl_bobup.GetFloat();
+	else
+		cycle = M_PI + M_PI * (cycle - cl_bobup.GetFloat()) / (1.0 - cl_bobup.GetFloat());
+
+	// bob is proportional to simulated velocity in the xy plane
+	// (don't count Z, or jumping messes it up)
+
+	bob = speed * cl_bob.GetFloat();
+	bob = bob * 0.3 + bob * 0.7 * sin(cycle);
+	if (bob > 4)
+		bob = 4;
+	else if (bob < -7)
+		bob = -7;
+
+	g_lateralBob = bob;
+	g_verticalBob = bob;
+
+	return bob;
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -336,18 +388,19 @@ void CBaseHLCombatWeapon::AddViewmodelBob( CBaseViewModel *viewmodel, Vector &or
 	CalcViewmodelBob();
 
 	// Apply bob, but scaled down to 40%
-	VectorMA( origin, g_verticalBob * 0.1f, forward, origin );
+	VectorMA( origin, g_verticalBob * 0.4f, forward, origin );
 	
-	// Z bob a bit more
-	origin[2] += g_verticalBob * 0.1f;
+	// Z bob a bit more, and add slight offset
+	//origin[2] += g_verticalBob;
 	
 	// bob the angles
-	angles[ ROLL ]	+= g_verticalBob * 0.5f;
-	angles[ PITCH ]	-= g_verticalBob * 0.4f;
+	angles[ YAW ]	-= g_lateralBob * 0.5f;
+	angles[ ROLL ]	-= g_verticalBob;
+	angles[ PITCH ]	-= g_verticalBob * 0.3f;
 
-	angles[ YAW ]	-= g_lateralBob  * 0.3f;
+	origin[2] -= 1;
 
-	VectorMA( origin, g_lateralBob * 0.8f, right, origin );
+	// VectorMA( origin, g_lateralBob * 0.8f, right, origin );
 }
 
 //-----------------------------------------------------------------------------
