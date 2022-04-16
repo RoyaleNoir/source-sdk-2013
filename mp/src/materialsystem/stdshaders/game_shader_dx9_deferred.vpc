@@ -12,6 +12,7 @@ $Project "Shaders (Deferred)"
 {
     $Folder	"Source Files"
 	{
+		$File "gbuffers_brush.cpp"
 	}
 
 	$Folder	"Header Files"

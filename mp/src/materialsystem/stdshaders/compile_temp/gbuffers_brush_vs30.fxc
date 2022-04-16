@@ -1,0 +1,43 @@
+#include "common_vs_fxc.h"
+
+struct VS_INPUT
+{
+    float3 vPos                         : POSITION;
+	float4 vNormal                      : NORMAL;
+    float3 vTangentS                    : TANGENT;
+	float3 vTangentT                    : BINORMAL;
+    float2 vBaseTexCoord                : TEXCOORD0;
+};
+
+struct VS_OUTPUT
+{
+    float4 projPos                      : POSITION;
+    float2 baseTexCoord                 : TEXCOORD0;
+    float3x3 tangentSpaceTranspose      : TEXCOORD1;    // and 2 and 3
+    //       tangentSpaceTranspose[1]   : TEXCOORD2;
+    //       tangentSpaceTranspose[2]   : TEXCOORD3;
+    float2 projZW                       : TEXCOORD4;
+};
+
+VS_OUTPUT main(VS_INPUT v)
+{
+    VS_OUTPUT o = (VS_OUTPUT)0;
+
+    // Positions
+    float4 vProjPos = mul(float4(v.vPos, 1), cModelViewProj);
+    o.projPos = vProjPos;
+
+    o.projZW = float2(dot(float4(v.vPos, 1), cModelViewProjZ), vProjPos.w); //dot(float4(v.vPos, 1), cModelViewProjZ);
+
+    // Normals and tangents
+    float3 objectNormal;
+    DecompressVertex_Normal(v.vNormal, objectNormal);
+    o.tangentSpaceTranspose[0] = mul(objectNormal, (float3x3)cModel[0]);
+    o.tangentSpaceTranspose[1] = mul(v.vTangentS, (float3x3)cModel[0]);
+	o.tangentSpaceTranspose[2] = mul(v.vTangentT, (float3x3)cModel[0]);
+
+    // Texcoords
+    o.baseTexCoord.xy = v.vBaseTexCoord;
+
+    return o;
+};

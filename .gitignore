@@ -19,6 +19,10 @@ ipch
 *.idb
 *.vcxproj
 *.sln
+*.vs/
+*.sentinel
+*.vpc_crc
+*.filters
 
 # OSX/Linux build products
 *.mak
@@ -35,6 +39,7 @@ client.lib
 server.pdb
 server.dll
 server.lib
+Debug*/
 
 client.so
 client.so.dbg

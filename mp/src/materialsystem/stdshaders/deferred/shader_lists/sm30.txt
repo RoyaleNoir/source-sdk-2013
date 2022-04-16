@@ -1,1 +1,3 @@
 // Compiled as sm_3_0, using feature level 9.3
+deferred/gbuffers_brush_vs30.fxc
+deferred/gbuffers_brush_ps30.fxc

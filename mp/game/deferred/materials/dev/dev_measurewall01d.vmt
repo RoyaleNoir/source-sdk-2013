@@ -1,0 +1,6 @@
+"GBuffers_Brush"
+{
+	// Original shader: BaseTimesLightmap
+	"$basetexture" "Dev/dev_measurewall01d"
+	"$surfaceprop" "dirt"
+}

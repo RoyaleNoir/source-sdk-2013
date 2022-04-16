@@ -1,0 +1,78 @@
+#include "common_ps_fxc.h"
+
+#if ALPHATEST
+const float cAlphaTestReference         : register( c0 );
+#endif
+
+sampler BaseTextureSampler		        : register( s0 );
+
+struct PS_INPUT
+{
+    float2 baseTexCoord                 : TEXCOORD0;
+    float3x3 tangentSpaceTranspose      : TEXCOORD1;    // and 2 and 3
+    //       tangentSpaceTranspose[1]   : TEXCOORD2;
+    //       tangentSpaceTranspose[2]   : TEXCOORD3;
+    float2 projZW                       : TEXCOORD4;
+};
+
+struct PS_OUTPUT
+{
+    float4 galbedo                      : COLOR0;
+    float4 gnormal                      : COLOR1;
+    float4 gdepth                       : COLOR2;
+};
+
+// Sign with f(0) = 1
+float2 fixedSign(float2 v)
+{
+    return float2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
+}
+
+// Octagonal Encode / Decode
+float2 octEncodeFast(float3 v)
+{
+    float2 p = v.xy * (1.0 / (abs(v.x) + abs(v.y) + abs(v.z)));
+
+    return (v.z <= 0.0) ? ((1.0 - abs(p.yx)) * fixedSign(p)) : p;
+}
+
+// Encode float2 to 2xSNORM12
+float3 to24Bit(float2 f)
+{
+    float2 u = round(clamp(f, -1.0, 1.0) * 2047 + 2047);
+    float t = floor(u.y / 256.0);
+
+    return floor(float3(
+        u.x / 16.0,
+        frac(u.x / 16.0) * 256.0 + t,
+        u.y - t * 256.0
+    )) / 255.0;
+}
+
+// Encodes float depth to 24 bit UNORM
+float3 encodeDepth(float depth)
+{
+    float depth24 = floor(depth * 16777215);
+
+    return float3(
+        fmod(depth24, 256.0) / 255.0,
+        fmod(floor(depth24 / 256), 256.0) / 255.0,
+        floor(depth24 / 65536) / 255.0
+    );
+}
+
+PS_OUTPUT main(PS_INPUT i)
+{
+    PS_OUTPUT o = (PS_OUTPUT)0;
+
+    float4 albedo = tex2D(BaseTextureSampler, i.baseTexCoord);
+    o.galbedo = albedo;
+
+    float3 normal = i.tangentSpaceTranspose[0];
+    o.gnormal = float4(to24Bit(octEncodeFast(normal)), 1.0);
+
+    float depth = i.projZW.x / i.projZW.y;
+    o.gdepth = float4(encodeDepth(depth), 1.0);
+
+    return o;
+}
