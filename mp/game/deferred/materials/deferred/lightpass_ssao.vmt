@@ -1,0 +1,7 @@
+"LightPass_SSAO"
+{
+    "$albedotexture" "_rt_gAlbedo"
+    "$normaltexture" "_rt_gNormal"
+    "$depthtexture" "_rt_gDepth"
+    "$noisetexture" "deferred/bluenoise"
+}

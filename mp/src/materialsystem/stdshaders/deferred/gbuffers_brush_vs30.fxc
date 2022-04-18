@@ -27,14 +27,14 @@ VS_OUTPUT main(VS_INPUT v)
     float4 vProjPos = mul(float4(v.vPos, 1), cModelViewProj);
     o.projPos = vProjPos;
 
-    o.projZW = float2(dot(float4(v.vPos, 1), cModelViewProjZ), vProjPos.w); //dot(float4(v.vPos, 1), cModelViewProjZ);
+    o.projZW = float2(vProjPos.z, vProjPos.w); //dot(float4(v.vPos, 1), cModelViewProjZ);
 
     // Normals and tangents
     float3 objectNormal;
     DecompressVertex_Normal(v.vNormal, objectNormal);
-    o.tangentSpaceTranspose[0] = mul(objectNormal, (float3x3)cModel[0]);
-    o.tangentSpaceTranspose[1] = mul(v.vTangentS, (float3x3)cModel[0]);
-	o.tangentSpaceTranspose[2] = mul(v.vTangentT, (float3x3)cModel[0]);
+    o.tangentSpaceTranspose[0] = mul(v.vTangentS, (float3x3)cModel[0]);
+	o.tangentSpaceTranspose[1] = mul(v.vTangentT, (float3x3)cModel[0]);
+    o.tangentSpaceTranspose[2] = mul(objectNormal, (float3x3)cModel[0]);
 
     // Texcoords
     o.baseTexCoord.xy = v.vBaseTexCoord;

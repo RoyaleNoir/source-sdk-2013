@@ -29,7 +29,11 @@ $Project "Client (Deferred)"
 
 		$Folder "Deferred"
 		{
-
+			$File	"deferred\c_lights.cpp"
+			$File	"deferred\deferred_light_manager.cpp"
+			$File	"deferred\deferred_light_manager.h"
+			$File	"deferred\deferred_rendertargets.cpp"
+			$File	"deferred\deferred_rendertargets.h"
 		}
 
 		$Folder	"HL2 DLL"

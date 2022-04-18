@@ -1,10 +1,11 @@
+// STATIC: "BUMPMAP"            "0..1"
+
 #include "common_ps_fxc.h"
 
-#if ALPHATEST
-const float cAlphaTestReference         : register( c0 );
-#endif
-
 sampler BaseTextureSampler		        : register( s0 );
+#if BUMPMAP
+sampler BumpmapSampler		            : register( s1 );
+#endif
 
 struct PS_INPUT
 {
@@ -68,7 +69,12 @@ PS_OUTPUT main(PS_INPUT i)
     float4 albedo = tex2D(BaseTextureSampler, i.baseTexCoord);
     o.galbedo = albedo;
 
-    float3 normal = i.tangentSpaceTranspose[0];
+#if BUMPMAP
+    float3 normal = tex2D(BumpmapSampler, i.baseTexCoord).xyz * 2 - 1;
+    normal = mul(normal, i.tangentSpaceTranspose);
+#else
+    float3 normal = i.tangentSpaceTranspose[2];
+#endif
     o.gnormal = float4(to24Bit(octEncodeFast(normal)), 1.0);
 
     float depth = i.projZW.x / i.projZW.y;

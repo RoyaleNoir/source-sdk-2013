@@ -59,3 +59,16 @@ config.cfg
 # shader files
 *.tmp
 
+# new shadercompile stuff
+__pycache__/
+compile_temp/
+
+# Game temp files
+GameState.txt
+server_blacklist.txt
+d1_trainstation_02.bsp
+graphs/
+modelsounds.cache
+stats.txt
+sound.cache
+voice_ban.dt

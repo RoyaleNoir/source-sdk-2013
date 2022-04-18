@@ -1,0 +1,18 @@
+#include "common_ps_fxc.h"
+
+sampler AlbedoSampler           : register(s0);
+sampler NormalSampler           : register(s1);
+
+struct PS_INPUT
+{
+    float4 projPos                      : POSITION;	
+    float2 texCoord                     : TEXCOORD0;
+};
+
+float4 main( PS_INPUT i ) : COLOR
+{
+    float4 albedoSample = tex2D(AlbedoSampler, i.texCoord);
+    float4 normalSample = tex2D(NormalSampler, i.texCoord);
+
+    return float4(lerp(albedoSample.rgb, float3(0, 0, 0), normalSample.a), albedoSample.a);
+}

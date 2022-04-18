@@ -1,0 +1,171 @@
+// DYNAMIC: "LIGHTTYPE"          "0..1"
+
+#include "common_ps_fxc.h"
+
+sampler AlbedoSampler           : register(s0);
+sampler NormalSampler           : register(s1);
+sampler DepthSampler            : register(s2);
+
+const float4x4 g_InvViewMatrix  : register(c0);
+const float4x4 g_InvProjMatrix  : register(c4);
+const float4 g_LightPos         : register(c8);
+const float4 g_LightColor       : register(c9);
+
+#if LIGHTTYPE == 1
+const float3 g_LightDir         : register(c10);
+const float2 g_LightCone        : register(c11);
+#endif
+
+static const float PI = 3.141592;
+
+struct PS_INPUT
+{
+    float4 projPos                      : POSITION;	
+    float2 texCoord                     : TEXCOORD0;
+};
+
+//==============//
+// Normal Stuff //
+//==============//
+
+float2 fixedSign(float2 v)
+{
+    return float2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
+}
+
+float3 octDecodeFast(float2 e) {
+    float3 v = float3(e, 1.0 - abs(e.x) - abs(e.y));
+
+    if (v.z < 0)
+        v.xy = (1.0 - abs(v.yx)) * fixedSign(v.xy);
+
+    return normalize(v);
+}
+
+float2 from24Bit(float3 u)
+{
+    u *= 255.0;
+    u.y *= (1.0 / 16.0);
+
+    float2 s = float2(
+        u.x * 16.0 + floor(u.y),
+        frac(u.y) * (16.0 * 256.0) + u.z
+    );
+
+    return clamp(s * (1.0 / 2047.0) - 1.0, -1.0, 1.0);
+}
+
+
+//=============//
+// Depth Stuff //
+//=============//
+
+float decodeDepth(float3 e)
+{
+    return (e.x * 255.0 + e.y * 65280.0 + e.z * 16711680.0) / 16777215.0;
+}
+
+float3 getViewPos(float2 uv, float depth)
+{
+    float4 ndc = float4(uv * 2 - 1, depth, 1.0);
+    ndc.y *= -1.0;
+
+    float4 viewSpacePos = mul(ndc, g_InvProjMatrix);
+    viewSpacePos /= viewSpacePos.w;
+
+    return viewSpacePos;
+}
+
+
+//============//
+// BRDF Stuff //
+//============//
+
+float fresnelSchlick(float f0, float cosTheta)
+{
+    return f0 + (1.0 - f0) * pow(1.0 - cosTheta, 5.0);
+}
+
+float smithLambda(float cosTheta, float alpha2)
+{
+    float cosTheta2 = cosTheta * cosTheta;
+    // return (-1 + sqrt((alpha2 - alpha2 * cosTheta2) / cosTheta2 + 1)) * 0.5;
+    return sqrt(alpha2 + (1.0 - alpha2) * cosTheta2) * 0.5;
+}
+
+float smithGGX(float NdotL, float NdotV, float roughness)
+{
+    float alpha = roughness * roughness;
+    float alpha2 = alpha * alpha;
+    
+    float lambdaL = smithLambda(NdotL, alpha2);
+    float lambdaV = smithLambda(NdotV, alpha2);
+
+    return 1.0 / (lambdaL / NdotL + lambdaV / NdotV);
+}
+
+float distributionGGX(float NdotH, float roughness)
+{
+    float alpha = roughness * roughness;
+    float alpha2 = alpha * alpha;
+
+    float f = (NdotH * alpha2 - NdotH) * NdotH + 1;
+    return alpha2 / (f * f);
+}
+
+
+//=============//
+// Entry Point //
+//=============//
+
+float4 main( PS_INPUT i ) : COLOR
+{
+    // Constants
+    // float3 lightPos = float3(0.0, 0.0, 32.0);
+    // float3 lightColor = float3(1.0, 1.0, 1.0) * 1.0;
+
+    float3 albedoSample = tex2D(AlbedoSampler, i.texCoord).rgb;
+    float4 normalSample = tex2D(NormalSampler, i.texCoord);
+    float3 depthSample = tex2D(DepthSampler, i.texCoord).xyz;
+
+    if (normalSample.w < 0.001)
+        return float4(0.0, 0.0, 0.0, 1.0);
+
+    // Calculate stuff
+    float3 worldNormal = octDecodeFast(from24Bit(normalSample.xyz));
+    float3 viewPos = getViewPos(i.texCoord, decodeDepth(depthSample));
+    float3 worldPos = mul(float4(viewPos, 1.0), g_InvViewMatrix).xyz;
+    float3 viewDir = -mul(normalize(viewPos), (float3x3)g_InvViewMatrix);
+
+    float3 lightVec = g_LightPos.xyz - worldPos;
+    float3 lightDir = normalize(lightVec);
+    float lightDist2 = max(1.0, dot(lightVec * 0.0254, lightVec * 0.0254));
+    float lightAtten = 1.0 / lightDist2;
+
+    // Light cutoff
+    lightAtten *= pow(saturate(1 - (lightDist2 * lightDist2) / (pow(g_LightPos.w, 4.0))), 2);
+
+#if LIGHTTYPE == 1
+    // lightAtten *= step(g_LightCone.y, dot(lightDir, -g_LightDir));
+    lightAtten *= smoothstep(-g_LightCone.y, -g_LightCone.x, dot(lightDir, g_LightDir));
+#endif
+
+    float3 halfDir = normalize(lightDir + viewDir);
+
+    // Do BRDF
+    float NdotL = saturate(dot(lightDir, worldNormal));
+    float NdotV = abs(dot(viewDir, worldNormal)) + 1e-5f;
+    float NdotH = saturate(dot(halfDir, worldNormal));
+    float LdotH = saturate(dot(lightDir, halfDir));
+
+    float fresnel = fresnelSchlick(0.04, LdotH);
+    float distribution = distributionGGX(NdotH, 0.5);
+    float geometry = smithGGX(NdotL, NdotV, 0.5);
+
+    float3 specularFactor = g_LightColor.rgb * (fresnel * geometry * distribution) / (4 * saturate(NdotV * NdotL));
+    float3 diffuseFactor = g_LightColor.rgb * (1 - fresnel) * albedoSample;
+    
+    float3 lightingTerm = (diffuseFactor + specularFactor) * lightAtten * NdotL;
+
+    return float4(lightingTerm * LINEAR_LIGHT_SCALE, 1.0);
+}

@@ -1,0 +1,151 @@
+#include "common_ps_fxc.h"
+
+sampler AlbedoSampler           : register(s0);
+sampler NormalSampler           : register(s1);
+sampler DepthSampler            : register(s2);
+sampler NoiseSampler            : register(s3);
+
+const float4x4 g_InvViewMatrix  : register(c0);
+const float4x4 g_InvProjMatrix  : register(c4);
+const float4   g_ScreenSize     : register(c8);
+
+static const float PI = 3.141592;
+
+struct PS_INPUT
+{
+    float4 projPos                      : POSITION;	
+    float2 texCoord                     : TEXCOORD0;
+};
+
+//==============//
+// Normal Stuff //
+//==============//
+
+float2 fixedSign(float2 v)
+{
+    return float2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
+}
+
+float3 octDecodeFast(float2 e) {
+    float3 v = float3(e, 1.0 - abs(e.x) - abs(e.y));
+
+    if (v.z < 0)
+        v.xy = (1.0 - abs(v.yx)) * fixedSign(v.xy);
+
+    return normalize(v);
+}
+
+float2 from24Bit(float3 u)
+{
+    u *= 255.0;
+    u.y *= (1.0 / 16.0);
+
+    float2 s = float2(
+        u.x * 16.0 + floor(u.y),
+        frac(u.y) * (16.0 * 256.0) + u.z
+    );
+
+    return clamp(s * (1.0 / 2047.0) - 1.0, -1.0, 1.0);
+}
+
+
+//=============//
+// Depth Stuff //
+//=============//
+
+float decodeDepth(float3 e)
+{
+    return (e.x * 255.0 + e.y * 65280.0 + e.z * 16711680.0) / 16777215.0;
+}
+
+float3 getViewPos(float2 uv, float depth)
+{
+    float4 ndc = float4(uv * 2 - 1, depth, 1.0);
+    ndc.y *= -1.0;
+
+    float4 viewSpacePos = mul(ndc, g_InvProjMatrix);
+    viewSpacePos /= viewSpacePos.w;
+
+    return viewSpacePos;
+}
+
+
+//============//
+// SSAO Stuff //
+//============//
+
+float ssaoOcclusion(float theta, float gamma, float cosGamma)
+{
+    return 0.25 * (cosGamma + 2 * theta * sin(gamma) - cos(2 * theta - gamma));
+}
+
+
+//=============//
+// Entry Point //
+//=============//
+
+float4 main( PS_INPUT i ) : COLOR
+{
+    float3 albedoSample = tex2D(AlbedoSampler, i.texCoord).rgb;
+    float4 normalSample = tex2D(NormalSampler, i.texCoord);
+    float3 depthSample = tex2D(DepthSampler, i.texCoord).xyz;
+
+    if (normalSample.w < 0.001)
+        return float4(0.0, 0.0, 0.0, 1.0);
+
+    // Calculate stuff
+    float3 worldNormal = octDecodeFast(from24Bit(normalSample.xyz));
+    float3 viewNormal = mul(worldNormal, (float3x3)transpose(g_InvViewMatrix));
+    float depth = decodeDepth(depthSample);
+
+    float3 viewPos = getViewPos(i.texCoord, depth);
+    float3 viewDir = normalize(-viewPos);
+
+    float3 worldPos = mul(float4(viewPos, 1.0), g_InvViewMatrix).xyz;
+    // float3 worldDir = -mul(normalize(viewPos), (float3x3)g_InvViewMatrix);
+
+    float jitter = tex2D(NoiseSampler, i.texCoord * g_ScreenSize.zw).r;
+
+    // Calculate coordinate spaces for occlusion
+    float3 direction = float3(cos(jitter * PI), sin(jitter * PI), 0.0);
+    float3 orthoDirection = direction - dot(direction, viewDir) * viewDir;
+    float3 projAxis = cross(direction, viewDir);
+    float3 projNormal = viewNormal - dot(viewNormal, projAxis) * projAxis;
+
+    // Calculate gamma
+    float gammaSign = sign(dot(orthoDirection, projNormal));
+    float cosGamma = saturate(dot(projNormal, viewDir) / length(projNormal));
+    float gamma = gammaSign * acos(cosGamma);
+
+    float2 pixelPos = i.texCoord * g_ScreenSize.xy;
+
+    // Raymarch
+    float cosTheta1 = -1.0;
+    float cosTheta2 = -1.0;
+
+    direction *= 16.0 / max(0.1, (-viewPos.z * 0.0254));
+    direction.y *= -1;
+
+    [unroll]
+    for (int i = 1; i <= 16; i++)
+    {
+        float2 sampleUV1 = floor(pixelPos + i * direction.xy) / g_ScreenSize.xy;
+        float3 samplePos1 = getViewPos(sampleUV1, decodeDepth(tex2D(DepthSampler, sampleUV1).xyz));
+
+        cosTheta1 = max(cosTheta1, dot(viewDir, normalize(samplePos1 - viewPos)));
+
+        float2 sampleUV2 = floor(pixelPos - i * direction.xy) / g_ScreenSize.xy;
+        float3 samplePos2 = getViewPos(sampleUV2, decodeDepth(tex2D(DepthSampler, sampleUV2).xyz));
+
+        cosTheta2 = max(cosTheta2, dot(viewDir, normalize(samplePos2 - viewPos)));
+    }
+
+    float theta1 = gamma + clamp(acos(cosTheta1) - gamma, -PI/2, PI/2);
+    float theta2 = gamma + clamp(-acos(cosTheta2) - gamma, -PI/2, PI/2);
+
+    float occlusion = length(projNormal) * (ssaoOcclusion(theta1, gamma, cosGamma) + ssaoOcclusion(theta1, gamma, cosGamma));
+
+    // float3 indirectMul = (occlusion / (1 - albedoSample * (1 - occlusion)));
+
+    return float4(occlusion, occlusion, occlusion, 1);
+}

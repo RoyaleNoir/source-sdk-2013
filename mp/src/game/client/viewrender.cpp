@@ -77,6 +77,11 @@
 // Projective textures
 #include "C_Env_Projected_Texture.h"
 
+#ifdef DEFERRED_CLIENT_DLL
+#include "deferred_rendertargets.h"
+#include "deferred_light_manager.h"
+#endif
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -770,6 +775,14 @@ static void SetClearColorToFogColor()
 #ifdef HL2_CLIENT_DLL
 CLIENTEFFECT_REGISTER_BEGIN( PrecacheViewRender )
 	CLIENTEFFECT_MATERIAL( "scripted/intro_screenspaceeffect" )
+CLIENTEFFECT_REGISTER_END()
+#endif
+
+#ifdef DEFERRED_CLIENT_DLL
+CLIENTEFFECT_REGISTER_BEGIN(PrecacheDeferredRender)
+	CLIENTEFFECT_MATERIAL("deferred/draw_gbuffer")
+	CLIENTEFFECT_MATERIAL("deferred/lightpass")
+	CLIENTEFFECT_MATERIAL("deferred/lightpass_ssao")
 CLIENTEFFECT_REGISTER_END()
 #endif
 
@@ -5349,6 +5362,143 @@ void MaybeInvalidateLocalPlayerAnimation()
 	}
 }
 
+#ifdef DEFERRED_CLIENT_DLL
+// HACK - eventually replace all this with custom IViewRender
+
+static VMatrix gInverseViewMatrix;
+static VMatrix gInverseProjMatrix;
+
+void PushGBuffers()
+{
+	if (!IsMainView(CurrentViewID()))
+		return;
+
+	CMatRenderContextPtr pRenderContext(materials);
+
+	pRenderContext->ClearColor4ub(255, 255, 255, 0);
+	pRenderContext->PushRenderTargetAndViewport(g_pDeferredRenderTargets->GetDepthTexture());
+	pRenderContext->ClearBuffers(true, false);
+	pRenderContext->PopRenderTargetAndViewport();
+
+	// Clear the normal GBuffer, since it also acts as a mask
+	pRenderContext->ClearColor4ub(0, 0, 0, 0);
+	pRenderContext->PushRenderTargetAndViewport(g_pDeferredRenderTargets->GetNormalTexture());
+	pRenderContext->ClearBuffers(true, false);
+	pRenderContext->PopRenderTargetAndViewport();
+
+	pRenderContext->PushRenderTargetAndViewport(g_pDeferredRenderTargets->GetAlbedoTexture());
+	pRenderContext->ClearBuffers(true, false);
+	pRenderContext->SetRenderTargetEx(1, g_pDeferredRenderTargets->GetNormalTexture());
+	pRenderContext->SetRenderTargetEx(2, g_pDeferredRenderTargets->GetDepthTexture());
+
+	pRenderContext.SafeRelease();
+}
+
+void PopGBuffers()
+{
+	if (!IsMainView(CurrentViewID()))
+		return;
+
+	CMatRenderContextPtr pRenderContext(materials);
+
+	pRenderContext->PopRenderTargetAndViewport();
+
+	pRenderContext.SafeRelease();
+}
+
+void DoLightingPass(int viewWidth, int viewHeight)
+{
+	if (!IsMainView(CurrentViewID()))
+		return;
+
+	CMatRenderContextPtr pRenderContext(materials);
+
+	VMatrix viewMatrix, projectionMatrix;
+	pRenderContext->GetMatrix(MATERIAL_VIEW, &viewMatrix);
+	pRenderContext->GetMatrix(MATERIAL_PROJECTION, &projectionMatrix);
+
+	MatrixInverseGeneral(viewMatrix, gInverseViewMatrix);
+	MatrixInverseGeneral(projectionMatrix, gInverseProjMatrix);
+
+	// FIX THIS FIX THIS FIX THIS
+	pRenderContext->SetIntRenderingParameter(INT_RENDERPARM_DEFERRED_INVVIEWMATRIX_ADDR, (int)&gInverseViewMatrix);
+	pRenderContext->SetIntRenderingParameter(INT_RENDERPARM_DEFERRED_INVPROJMATRIX_ADDR, (int)&gInverseProjMatrix);
+
+	IMaterial* blitMat = materials->FindMaterial("deferred/draw_gbuffer", TEXTURE_GROUP_OTHER);
+	IMaterial* lightMat = materials->FindMaterial("deferred/lightpass", TEXTURE_GROUP_OTHER);
+	// IMaterial* ssaoMat = materials->FindMaterial("deferred/lightpass_ssao", TEXTURE_GROUP_OTHER);
+	ITexture* albedoTexture = g_pDeferredRenderTargets->GetAlbedoTexture();
+
+	if (blitMat && lightMat && albedoTexture)
+	{
+		int width = albedoTexture->GetActualWidth();
+		int height = albedoTexture->GetActualHeight();
+
+		pRenderContext->DrawScreenSpaceRectangle(
+			blitMat, 0, 0, viewWidth, viewHeight,
+			0, 0, width - 1, height - 1, width, height
+		);
+
+		for (int i = 0; i < GetDeferredLightManager()->m_lightData.Count(); i++)
+		{
+			DeferredLightData_t* lightData = GetDeferredLightManager()->m_lightData.Element(i);
+
+			float lightRadius;
+			Vector lightMins, lightMaxs;
+
+			GetDeferredLightManager()->GetLightBounds(lightRadius, lightMins, lightMaxs, lightData);
+
+			// Hacky light cull
+			if (!engine->IsBoxInViewCluster(lightMins, lightMaxs))
+			{
+				continue;
+			}
+			
+			// Debug culling
+			/*debugoverlay->AddBoxOverlay2(
+				lightData->position,
+				lightMins - lightData->position,
+				lightMaxs - lightData->position,
+				vec3_angle,
+				Color(0, 0, 0, 0),
+				Color(0, 255, 0, 255),
+				-1
+			);/**/
+
+			pRenderContext->SetIntRenderingParameter(INT_RENDERPARM_DEFERRED_LIGHTTYPE, lightData->type);
+			pRenderContext->SetVectorRenderingParameter(VECTOR_RENDERPARM_DEFERRED_LIGHTPOS, lightData->position);
+			pRenderContext->SetVectorRenderingParameter(VECTOR_RENDERPARM_DEFERRED_LIGHTCOLOR, lightData->color);
+			pRenderContext->SetFloatRenderingParameter(FLOAT_RENDERPARM_DEFERRED_LIGHTCUTOFF, lightRadius);
+
+			if (lightData->type == 1)
+			{
+				pRenderContext->SetVectorRenderingParameter(VECTOR_RENDERPARM_DEFERRED_LIGHTDIR, lightData->direction);
+				pRenderContext->SetFloatRenderingParameter(FLOAT_RENDERPARM_DEFERRED_LIGHTINNERCONE, lightData->innerCone);
+				pRenderContext->SetFloatRenderingParameter(FLOAT_RENDERPARM_DEFERRED_LIGHTOUTERCONE, lightData->outerCone);
+			}
+		
+			pRenderContext->DrawScreenSpaceRectangle(
+				lightMat, 0, 0, viewWidth, viewHeight,
+				0, 0, width - 1, height - 1, width, height
+			);
+		}
+	}
+
+	// if (ssaoMat && albedoTexture)
+	// {
+	// 	int width = albedoTexture->GetActualWidth();
+	// 	int height = albedoTexture->GetActualHeight();
+	// 
+	// 	pRenderContext->DrawScreenSpaceRectangle(
+	// 		ssaoMat, 0, 0, viewWidth, viewHeight,
+	// 		0, 0, width - 1, height - 1, width, height
+	// 	);
+	// }
+
+	pRenderContext.SafeRelease();
+}
+#endif
+
 void CBaseWorldView::DrawExecute( float waterHeight, view_id_t viewID, float waterZAdjust )
 {
 	int savedViewID = g_CurrentViewID;
@@ -5388,7 +5538,14 @@ void CBaseWorldView::DrawExecute( float waterHeight, view_id_t viewID, float wat
 
 	if ( m_DrawFlags & DF_DRAW_ENTITITES )
 	{
+#ifdef DEFERRED_CLIENT_DLL
+		PushGBuffers();
+#endif
 		DrawWorld( waterZAdjust );
+#ifdef DEFERRED_CLIENT_DLL
+		PopGBuffers();
+		DoLightingPass(this->width, this->height);
+#endif
 		DrawOpaqueRenderables( DepthMode );
 
 #ifdef TF_CLIENT_DLL
@@ -5404,7 +5561,14 @@ void CBaseWorldView::DrawExecute( float waterHeight, view_id_t viewID, float wat
 	}
 	else
 	{
+#ifdef DEFERRED_CLIENT_DLL
+		PushGBuffers();
+#endif
 		DrawWorld( waterZAdjust );
+#ifdef DEFERRED_CLIENT_DLL
+		PopGBuffers();
+		DoLightingPass(this->width, this->height);
+#endif
 
 #ifdef TF_CLIENT_DLL
 		bool bVisionOverride = ( localplayer_visionflags.GetInt() & ( 0x01 ) ); // Pyro-vision Goggles

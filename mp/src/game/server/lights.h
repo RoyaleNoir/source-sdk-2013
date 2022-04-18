@@ -17,6 +17,11 @@ class CLight : public CPointEntity
 {
 public:
 	DECLARE_CLASS( CLight, CPointEntity );
+#ifdef DEFERRED_DLL
+	DECLARE_NETWORKCLASS();
+
+	CLight(void);
+#endif
 
 	bool	KeyValue( const char *szKeyName, const char *szValue );
 	void	Spawn( void );
@@ -35,7 +40,22 @@ public:
 	void	InputTurnOn( inputdata_t &inputdata );
 	void	InputTurnOff( inputdata_t &inputdata );
 
+#ifdef DEFERRED_DLL
+	virtual int UpdateTransmitState()
+	{
+		return SetTransmitState(FL_EDICT_ALWAYS);
+	}
+#endif
+
 	DECLARE_DATADESC();
+
+#ifdef DEFERRED_DLL
+protected:
+	CNetworkVector(m_vecLightColor);
+	CNetworkVar(float, m_flInnerCone);
+	CNetworkVar(float, m_flOuterCone);
+	CNetworkVar(int, m_nLightType);
+#endif
 
 private:
 	int		m_iStyle;

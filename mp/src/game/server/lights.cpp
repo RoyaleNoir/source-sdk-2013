@@ -33,9 +33,46 @@ BEGIN_DATADESC( CLight )
 	DEFINE_INPUTFUNC( FIELD_VOID,	"TurnOn", InputTurnOn ),
 	DEFINE_INPUTFUNC( FIELD_VOID,	"TurnOff", InputTurnOff ),
 
+#ifdef DEFERRED_DLL
+	DEFINE_FIELD(m_vecLightColor, FIELD_VECTOR),
+	DEFINE_FIELD(m_nLightType, FIELD_INTEGER),
+#endif
+
 END_DATADESC()
 
+#ifdef DEFERRED_DLL
+IMPLEMENT_SERVERCLASS_ST(CLight, DT_Light)
+	SendPropVector(SENDINFO(m_vecLightColor), -1, SPROP_CHANGES_OFTEN),
+	SendPropFloat(SENDINFO(m_flInnerCone)),
+	SendPropFloat(SENDINFO(m_flOuterCone)),
+	SendPropInt(SENDINFO(m_nLightType)),
+END_SEND_TABLE()
+#endif
 
+#ifdef DEFERRED_DLL
+static Vector lightToVector(int* intColor)
+{
+	Vector convertedColor;
+
+	for (int i = 0; i < 3; i++)
+	{
+		convertedColor[i] = powf(intColor[i] / 255.0f, 2.2f);
+	}
+	convertedColor *= intColor[3] / 255.0f;
+
+	return convertedColor;
+}
+#endif
+
+
+#ifdef DEFERRED_DLL
+CLight::CLight(void)
+{
+	m_vecLightColor = vec3_origin;
+	m_flOuterCone = 0.0f;
+	m_nLightType = 0;
+}
+#endif
 
 //
 // Cache user-entity-field values until spawn is called.
@@ -48,6 +85,26 @@ bool CLight::KeyValue( const char *szKeyName, const char *szValue )
 		angles.x = atof(szValue);
 		SetAbsAngles( angles );
 	}
+#ifdef DEFERRED_DLL
+	else if (FStrEq(szKeyName, "_light"))
+	{
+		int iValue[4];
+		UTIL_StringToIntArray(iValue, 4, szValue);
+
+		if (iValue[0] <= 0 || iValue[1] <= 0 || iValue[2] <= 0)
+			return true;
+
+		m_vecLightColor = lightToVector(iValue);
+	}
+	else if (FStrEq(szKeyName, "_cone"))
+	{
+		m_flOuterCone = cos(atof(szValue) * M_PI / 180);
+	}
+	else if (FStrEq(szKeyName, "_inner_cone"))
+	{
+		m_flInnerCone = cos(atof(szValue) * M_PI / 180);
+	}
+#endif
 	else
 	{
 		return BaseClass::KeyValue( szKeyName, szValue );
@@ -60,11 +117,13 @@ bool CLight::KeyValue( const char *szKeyName, const char *szValue )
 // If targeted, it will toggle between on or off.
 void CLight::Spawn( void )
 {
+#ifndef DEFERRED_DLL
 	if (!GetEntityName())
 	{       // inert light
 		UTIL_Remove( this );
 		return;
 	}
+#endif
 	
 	if (m_iStyle >= 32)
 	{
@@ -80,6 +139,16 @@ void CLight::Spawn( void )
 		else
 			engine->LightStyle(m_iStyle, "m");
 	}
+
+
+#ifdef DEFERRED_DLL
+	// m_nLightType = 0;
+	// m_vecLightColor = vec3_origin;
+	if (FStrEq(GetClassname(), "light_spot"))
+	{
+		m_nLightType = 1;
+	}
+#endif
 }
 
 
@@ -262,4 +331,8 @@ bool CEnvLight::KeyValue( const char *szKeyName, const char *szValue )
 void CEnvLight::Spawn( void )
 {
 	BaseClass::Spawn( );
+
+#ifdef DEFERRED_DLL
+	m_nLightType = 2;
+#endif
 }

@@ -13,6 +13,9 @@ $Project "Shaders (Deferred)"
     $Folder	"Source Files"
 	{
 		$File "gbuffers_brush.cpp"
+		$File "lightpass.cpp"
+		$File "lightpass_blit.cpp"
+		$File "lightpass_ssao.cpp"
 	}
 
 	$Folder	"Header Files"

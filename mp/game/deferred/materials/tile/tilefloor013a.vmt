@@ -1,0 +1,6 @@
+"GBuffers_Brush"
+{
+	"$baseTexture" "Tile/tilefloor013a"	
+	"$surfaceprop" "tile"
+	"$bumpmap" "tile/tilefloor013a_normal"
+}
