@@ -1,0 +1,41 @@
+//-----------------------------------------------------------------------------
+//	RESOURCESYSTEM.VPC
+//
+//	Project Script
+//-----------------------------------------------------------------------------
+
+$Macro SRCDIR		"..\.."
+$Macro OUTBINDIR	"$SRCDIR\..\game\$GAMENAME\bin"
+
+// Need this so it can be in gamebin
+$Macro GAMENAME "mod_episodic"
+
+$Include "$SRCDIR\vpc_scripts\source_dll_base.vpc"
+
+$Configuration
+{
+	$Compiler
+	{
+		$PreprocessorDefinitions			"$BASE;RESOURCESYSTEM_DLL_EXPORT"
+	}
+}
+
+$Project "resourcesystem"
+{
+	$Folder	"Source Files"
+	{
+		$File	"resourcesystem.cpp"
+	}
+
+	$Folder	"Header Files"
+	{
+		$File	"$SRCDIR\public\resourcesystem\iresourcesystem.h"
+		$File	"$SRCDIR\public\resourcesystem\resourcefile.h"
+	}
+
+	$Folder	"Link Libraries"
+	{
+		$Lib	tier2
+		$Lib	keyvalues3
+	}
+}

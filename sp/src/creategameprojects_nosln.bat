@@ -1,0 +1,1 @@
+devtools\bin\vpc.exe /episodic +game +resourcesystem +keyvalues3

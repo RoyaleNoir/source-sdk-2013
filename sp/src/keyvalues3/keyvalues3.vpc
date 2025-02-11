@@ -1,0 +1,35 @@
+//-----------------------------------------------------------------------------
+//	KEYVALUES3.VPC
+//
+//	Project Script
+//-----------------------------------------------------------------------------
+
+$Macro SRCDIR	".."
+
+$include "$SRCDIR\vpc_scripts\source_lib_base.vpc"
+
+$Configuration
+{
+	$Compiler
+	{
+		$AdditionalIncludeDirectories	"$BASE;$SRCDIR\thirdparty\lz4-1.10.0\include"
+	}
+}
+
+$Project "keyvalues3"
+{
+	$Folder	"Source Files"
+	{
+		$File	"keyvalues3.cpp"
+	}
+
+	$Folder	"Header Files"
+	{
+		$File	"$SRCDIR\public\keyvalues3\keyvalues3.h"
+	}
+
+	$Folder	"Link Libraries"
+	{
+		$Lib	"$SRCDIR\thirdparty\lz4-1.10.0\static\liblz4_static"
+	}
+}

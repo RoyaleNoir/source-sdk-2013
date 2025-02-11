@@ -135,6 +135,8 @@ extern ConVar tf_mm_servermode;
 #include "replay/ireplaysystem.h"
 #endif
 
+#include "resourcesystem/iresourcesystem.h"
+
 extern IToolFrameworkServer *g_pToolFrameworkServer;
 extern IParticleSystemQuery *g_pParticleSystemQuery;
 
@@ -193,6 +195,9 @@ IScriptManager *scriptmanager = NULL;
 IReplaySystem *g_pReplay = NULL;
 IServerReplayContext *g_pReplayServerContext = NULL;
 #endif
+
+IResourceSystem *g_pResourceSystem = NULL;
+static CSysModule *g_pResourceSystemModule = NULL;
 
 IGameSystem *SoundEmitterSystem();
 
@@ -654,6 +659,20 @@ bool CServerGameDLL::DLLInit( CreateInterfaceFn appSystemFactory,
 	if ( !soundemitterbase->Connect( appSystemFactory ) )
 		return false;
 
+	char szResourceSystemPath[MAX_PATH];
+	filesystem->RelativePathToFullPath( "resourcesystem" DLL_EXT_STRING, "GAMEBIN", szResourceSystemPath, sizeof( szResourceSystemPath ) );
+
+	if ( !Sys_LoadInterface( szResourceSystemPath, RESOURCESYSTEM_INTERFACE_VERSION, &g_pResourceSystemModule, (void**)&g_pResourceSystem ) )
+		return false;
+
+	if ( !g_pResourceSystem->Connect( appSystemFactory ) )
+	{
+		return false;
+	}
+
+	if (g_pResourceSystem->Init() != INIT_OK )
+		return false;
+
 	// cache the globals
 	gpGlobals = pGlobals;
 
@@ -819,6 +838,11 @@ void CServerGameDLL::DLLShutdown( void )
 #endif	
 
 	gameeventmanager = NULL;
+
+	g_pResourceSystem->Shutdown();
+	g_pResourceSystem = NULL;
+	Sys_UnloadModule( g_pResourceSystemModule );
+	g_pResourceSystemModule = NULL;
 	
 	DisconnectTier3Libraries();
 	DisconnectTier2Libraries();

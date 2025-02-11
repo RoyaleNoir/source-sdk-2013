@@ -40,10 +40,20 @@ $Project "height2normal"
 	"utils\height2normal\height2normal.vpc" [$WIN32]
 }
 
+$Project "keyvalues3"
+{
+	"keyvalues3\keyvalues3.vpc" [($WINDOWS||$X360||$POSIX)]
+}
+
 $Project "server"
 {
 	"game\server\server_hl2.vpc"		[($WIN32||$X360||$POSIX) && $HL2]
 	"game\server\server_episodic.vpc"	[($WIN32||$X360||$POSIX) && $EPISODIC]
+}
+
+$Project "resourcesystem"
+{
+	"game\resourcesystem\resourcesystem.vpc" [($WINDOWS||$X360||$POSIX)]
 }
 
 $Project "responserules"

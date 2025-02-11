@@ -173,6 +173,8 @@ extern vgui::IInputInternal *g_InputInternal;
 #include "sixense/in_sixense.h"
 #endif
 
+#include "resourcesystem/iresourcesystem.h"
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -225,6 +227,9 @@ IVEngineServer	*serverengine = NULL;
 IScriptManager *scriptmanager = NULL;
 
 IHaptics* haptics = NULL;// NVNT haptics system interface singleton
+
+IResourceSystem *g_pResourceSystem = NULL;
+static CSysModule *g_pResourceSystemModule = NULL;
 
 //=============================================================================
 // HPE_BEGIN
@@ -988,6 +993,20 @@ int CHLClient::Init( CreateInterfaceFn appSystemFactory, CreateInterfaceFn physi
 	// it's ok if this is NULL. That just means the sourcevr.dll wasn't found
 	g_pSourceVR = (ISourceVirtualReality *)appSystemFactory(SOURCE_VIRTUAL_REALITY_INTERFACE_VERSION, NULL);
 
+	char szResourceSystemPath[MAX_PATH];
+	filesystem->RelativePathToFullPath( "resourcesystem" DLL_EXT_STRING, "GAMEBIN", szResourceSystemPath, sizeof( szResourceSystemPath ) );
+
+	if ( !Sys_LoadInterface( szResourceSystemPath, RESOURCESYSTEM_INTERFACE_VERSION, &g_pResourceSystemModule, (void**)&g_pResourceSystem ) )
+		return false;
+
+	if ( !g_pResourceSystem->Connect( appSystemFactory ) )
+	{
+		return false;
+	}
+
+	if (g_pResourceSystem->Init() != INIT_OK )
+		return false;
+
 	factorylist_t factories;
 	factories.appSystemFactory = appSystemFactory;
 	factories.physicsFactory = physicsFactory;
@@ -1267,6 +1286,11 @@ void CHLClient::Shutdown( void )
 #ifdef MAPBASE_RPC
 	MapbaseRPC_Shutdown();
 #endif
+
+	g_pResourceSystem->Shutdown();
+	g_pResourceSystem = NULL;
+	Sys_UnloadModule( g_pResourceSystemModule );
+	g_pResourceSystemModule = NULL;
 	
 	// This call disconnects the VGui libraries which we rely on later in the shutdown path, so don't do it
 //	DisconnectTier3Libraries( );
