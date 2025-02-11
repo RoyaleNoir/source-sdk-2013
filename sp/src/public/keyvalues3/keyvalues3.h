@@ -142,7 +142,7 @@ private:
 	{
 		const CUtlVector<uint32> *dwordTable;
 		const CUtlVector<uint64> *qwordTable;
-		const CUtlVector<CUtlString> *stringTable;
+		const CUtlVector<const char*> *stringTable;
 		const CUtlVector<uint8> *typeTable;
 		int nCurrentDWord;
 		int nCurrentQWord;

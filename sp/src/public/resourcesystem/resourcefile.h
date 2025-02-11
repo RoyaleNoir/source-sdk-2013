@@ -4,6 +4,9 @@
 #include "tier0/basetypes.h"
 
 
+#define RESOURCEFILE_HEADER_VERSION 12
+
+
 typedef uint32 ResourceBlockId_t;
 
 
@@ -48,7 +51,7 @@ private:
 //-----------------------------------------------------------------------------
 struct ResourceFileBlock_t
 {
-	ResourceBlockId_t			m_nBlockId;
+	ResourceBlockId_t			m_nId;
 	ResourceOffsetArray<void>	m_Data;
 };
 
@@ -58,10 +61,52 @@ struct ResourceFileBlock_t
 //-----------------------------------------------------------------------------
 struct ResourceFileHeader_t
 {
+	template <typename T> const T *GetBlock( uint32 nId ) const;
+	const ResourceOffsetArray<void> *GetDataBlock() const;
+
 	uint32	m_nFileSize;
 	uint16	m_nHeaderVersion;
 	uint16	m_nFormatVersion;
 	ResourceOffsetArray<ResourceFileBlock_t> m_Blocks;
 };
+
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : nId - 
+// Output : const T*
+//-----------------------------------------------------------------------------
+template<typename T>
+inline const T *ResourceFileHeader_t::GetBlock( uint32 nId ) const
+{
+	for ( uint32 i = 0; i < m_Blocks.Count(); i++)
+	{
+		if ( m_Blocks[i]->m_nId == nId )
+		{
+			return (const T*)m_Blocks[i]->m_Data.Base();
+		}
+	}
+
+	return NULL;
+}
+
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Output : const ResourceFileOffsetArray_t<void>
+//-----------------------------------------------------------------------------
+inline const ResourceOffsetArray<void> *ResourceFileHeader_t::GetDataBlock() const
+{
+	for ( uint32 i = 0; i < m_Blocks.Count(); i++)
+	{
+		if ( m_Blocks[i]->m_nId == MAKEID( 'D', 'A', 'T', 'A' ) )
+		{
+			return &m_Blocks[i]->m_Data;
+		}
+	}
+
+	return NULL;
+}
+
 
 #endif // RESOURCEFILE_H

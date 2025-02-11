@@ -24,11 +24,20 @@ $Project "resourcesystem"
 {
 	$Folder	"Source Files"
 	{
+		$Folder	"Resource Types"
+		{
+			$File	"modelresource.cpp"
+		}
 		$File	"resourcesystem.cpp"
 	}
 
 	$Folder	"Header Files"
 	{
+		$Folder	"Resource Types"
+		{
+			$File	"$SRCDIR\public\resourcesystem\modelresource.h"
+		}
+
 		$File	"$SRCDIR\public\resourcesystem\iresourcesystem.h"
 		$File	"$SRCDIR\public\resourcesystem\resourcefile.h"
 	}

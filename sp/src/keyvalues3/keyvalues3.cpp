@@ -425,12 +425,11 @@ bool KeyValues3::LoadFromBuffer( CUtlBuffer &buf )
 	}
 
 	int stringCount = dwordTable[0];
-	CUtlVector<CUtlString> stringTable( 0, stringCount );
+	CUtlVector<const char*> stringTable( 0, stringCount );	// The CUtlBuf that owns the pointers lasts longer
 	for ( int i = 0; i < stringCount; i++ )
 	{
-		char s[512];
-		decBuf.GetString( s );
-		stringTable.AddToTail( s );
+		stringTable.AddToTail( (const char*)decBuf.PeekGet() );
+		decBuf.SeekGet( CUtlBuffer::SEEK_CURRENT, decBuf.PeekStringLength() );
 	}
 
 	CUtlVector<uint8> typeTable( 0, stringCount );
@@ -581,7 +580,7 @@ bool KeyValues3::LoadBinary_R( CUtlBuffer &buf, ReadContext &context,
 
 			if ( nStringID > 0 )
 			{
-				const CUtlString &sValue = context.stringTable->Element( nStringID );
+				const char *sValue = context.stringTable->Element( nStringID );
 				SetString( sValue );
 			}
 			else
@@ -651,7 +650,7 @@ bool KeyValues3::LoadBinary_R( CUtlBuffer &buf, ReadContext &context,
 			for ( int i = 0; i < nElementCount; i++ )
 			{
 				int nNameID = context.dwordTable->Element( context.nCurrentDWord++ );
-				const CUtlString &sElementName = context.stringTable->Element( nNameID );
+				const char *sElementName = context.stringTable->Element( nNameID );
 				
 				KeyValues3 *pElement = new KeyValues3();
 				if ( !pElement->LoadBinary_R( buf, context ) )

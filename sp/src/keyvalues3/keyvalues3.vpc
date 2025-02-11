@@ -26,6 +26,7 @@ $Project "keyvalues3"
 	$Folder	"Header Files"
 	{
 		$File	"$SRCDIR\public\keyvalues3\keyvalues3.h"
+		$File	"$SRCDIR\public\keyvalues3\keyvalues3_deserialize.h"
 	}
 
 	$Folder	"Link Libraries"
